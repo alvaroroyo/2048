@@ -330,6 +330,7 @@
 				D52BFFCA1E0498980039663D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

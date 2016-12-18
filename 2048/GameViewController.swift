@@ -10,16 +10,40 @@ import UIKit
 
 class GameViewController: UIViewController {
 
+    //STATICS
+    let DIRECTION_DOWN   = [12,8,4,0,13,9,5,1,14,10,6,2,15,11,7,3]
+    let DIRECTION_UP     = [0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15]
+    let DIRECTION_RIGHT  = [3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12]
+    let DIRECTION_LEFT   = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    
     //Views:
     var views : [String:UIView]!
     
     var scoreView : UIView!
+    var scoreLbl : UILabel!
+    var scorePointsLbl : UILabel!
     var bestScoreView : UIView!
+    var bestScoreLbl : UILabel!
+    var bestScorePointsLbl : UILabel!
     var tableroView : UIView!
     var resetBtn : UIButton!
     
-    var chipsPositions = Array<UIView>()
-    var chipsInGame = Array<Chip>()
+    var chipsPositions = Array<CGRect>()
+    var chipsInGame : [Any] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    
+    //STATUS
+    var score = 0 {
+        didSet{
+            scorePointsLbl.text = score.description
+            
+            if(bestScore < score){
+                bestScorePointsLbl.text = score.description
+                UserDefaults().set(score, forKey: "BestScore")
+            }
+            
+        }
+    }
+    var bestScore = 0
     
     override func loadView() {
         self.view = UIView(frame: UIScreen.main.bounds)
@@ -31,17 +55,48 @@ class GameViewController: UIViewController {
         scoreView.translatesAutoresizingMaskIntoConstraints = false
         self.view.addSubview(scoreView)
         
+        scoreLbl = UILabel()
+        scoreLbl.text = "Score"
+        scoreLbl.textAlignment = .center
+        scoreLbl.textColor = UIColor.colorWithHex(hex: "#EEE4DA", alpha: 1)
+        scoreLbl.font = UIFont(name: "PingFangHK-Medium", size: 17)
+        scoreLbl.translatesAutoresizingMaskIntoConstraints = false
+        scoreView.addSubview(scoreLbl)
+        
+        scorePointsLbl = UILabel()
+        scorePointsLbl.text = "0"
+        scorePointsLbl.textAlignment = .center
+        scorePointsLbl.textColor = UIColor.white
+        scorePointsLbl.font = UIFont(name: "PingFangHK-Medium", size: 17)
+        scorePointsLbl.translatesAutoresizingMaskIntoConstraints = false
+        scoreView.addSubview(scorePointsLbl)
+        
         bestScoreView = UIView()
         bestScoreView.layer.cornerRadius = 7
         bestScoreView.backgroundColor = UIColor.colorWithHex(hex: "#BBADA0", alpha: 1)
         bestScoreView.translatesAutoresizingMaskIntoConstraints = false
         self.view.addSubview(bestScoreView)
         
+        bestScoreLbl = UILabel()
+        bestScoreLbl.text = "Best Score"
+        bestScoreLbl.textAlignment = .center
+        bestScoreLbl.textColor = UIColor.colorWithHex(hex: "#EEE4DA", alpha: 1)
+        bestScoreLbl.font = UIFont(name: "PingFangHK-Medium", size: 17)
+        bestScoreLbl.translatesAutoresizingMaskIntoConstraints = false
+        bestScoreView.addSubview(bestScoreLbl)
+        
+        bestScorePointsLbl = UILabel()
+        bestScorePointsLbl.textAlignment = .center
+        bestScorePointsLbl.textColor = UIColor.white
+        bestScorePointsLbl.font = UIFont(name: "PingFangHK-Medium", size: 17)
+        bestScorePointsLbl.translatesAutoresizingMaskIntoConstraints = false
+        bestScoreView.addSubview(bestScorePointsLbl)
+        
         tableroView = UIView()
+        tableroView.translatesAutoresizingMaskIntoConstraints = false
         tableroView.clipsToBounds = true
         tableroView.layer.cornerRadius = 7
         tableroView.backgroundColor = UIColor.colorWithHex(hex: "#BBADA0", alpha: 1)
-        tableroView.translatesAutoresizingMaskIntoConstraints = false
         self.view.addSubview(tableroView)
         
         resetBtn = UIButton()
@@ -74,6 +129,14 @@ class GameViewController: UIViewController {
         let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(swipeAction(_:)))
         swipeRight.direction = UISwipeGestureRecognizerDirection.right
         tableroView.addGestureRecognizer(swipeRight)
+        
+        resetBtn.addTarget(self, action: #selector(reset), for: .touchUpInside)
+        
+        bestScore = UserDefaults().integer(forKey: "BestScore")
+        bestScorePointsLbl.text = bestScore.description
+        
+        addNewChip()
+        addNewChip()
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
@@ -85,6 +148,8 @@ class GameViewController: UIViewController {
         var constraints : Array<NSLayoutConstraint>!
         
         self.view.removeConstraints(self.view.constraints)
+        scoreView.removeConstraints(scoreView.constraints)
+        bestScoreView.removeConstraints(bestScoreView.constraints)
         
         if UIDevice.current.orientation.isLandscape || isLandscape == true{
             //LANDSCAPE VIEW
@@ -117,20 +182,47 @@ class GameViewController: UIViewController {
         
         self.view.addConstraints(constraints)
         
+        //SUBVIEWS CONSTRAINTS
+        
+        var scoreConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[scoreLbl]-0-|", options: [], metrics: nil, views: ["scoreLbl":scoreLbl])
+        scoreConstraints = scoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[scorePointsLbl]-0-|", options: [], metrics: nil, views: ["scorePointsLbl":scorePointsLbl])
+        scoreConstraints = scoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-5-[scoreLbl(18)]-0-[scorePointsLbl]", options: [], metrics: nil, views: ["scoreLbl":scoreLbl,"scorePointsLbl":scorePointsLbl])
+        scoreView.addConstraints(scoreConstraints)
+        
+        var bestScoreConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[bestScoreLbl]-0-|", options: [], metrics: nil, views: ["bestScoreLbl":bestScoreLbl])
+        bestScoreConstraints = bestScoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[bestScorePointsLbl]-0-|", options: [], metrics: nil, views: ["bestScorePointsLbl":bestScorePointsLbl])
+        bestScoreConstraints = bestScoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-5-[bestScoreLbl(18)]-0-[bestScorePointsLbl]", options: [], metrics: nil, views: ["bestScoreLbl":bestScoreLbl,"bestScorePointsLbl":bestScorePointsLbl])
+        bestScoreView.addConstraints(bestScoreConstraints)
+        
     }
     
-    func setTableSpaces(with isLandscape:Bool){
+    fileprivate func getPosition() -> Int{
+        
+        var slots: Array<Int> = Array<Int>()
+        
+        for i in 0...15{
+            if chipsInGame[i] is Int {
+                slots.append(i)
+            }
+        }
+        
+        let random = Int(arc4random()) % slots.count
+        
+        return slots[random]
+    }
+    
+    fileprivate func setTableSpaces(with isLandscape:Bool){
         //** SET CHIP POSITIONS **//
         let surface = isLandscape ? pow(Double(self.view.frame.height - 40), 2.0) : pow(Double(self.view.frame.width - 40), 2.0)
-
+        
         let marginSurface = surface * 0.47
-
+        
         let chipSurface = surface - marginSurface
-
+        
         let chipWidth = sqrt(chipSurface / 16)
-
+        
         let chipMargin = sqrt(marginSurface) / 13
-
+        
         let marginY = chipMargin
         let marginX = chipMargin
         
@@ -143,7 +235,7 @@ class GameViewController: UIViewController {
             chipPosition.layer.cornerRadius = 7
             tableroView.addSubview(chipPosition)
             
-            chipsPositions.append(chipPosition)
+            chipsPositions.append(CGRect(x: metrics["marginX"]!, y: metrics["marginY"]!, width: chipWidth, height: chipWidth))
             
             var constraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-(marginX)-[chipPosition(chipWidth)]", options: [], metrics: metrics, views: ["chipPosition":chipPosition])
             constraints = constraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-(marginY)-[chipPosition(chipWidth)]", options: [], metrics: metrics, views: ["chipPosition":chipPosition])
@@ -160,50 +252,137 @@ class GameViewController: UIViewController {
         }
     }
     
-    fileprivate func getPosition() -> Int{
-        
-        var slots: Array<Int> = Array<Int>()
-        
-        for i in 0...15{
-            if self.chipsInGame[i].chipNumber == 0 {
-                slots.append(i)
-            }
-        }
-        
-        let random = Int(arc4random()) % slots.count
-        
-        return slots[random]
-    }
-    
     func addNewChip() -> Void{
-//        let position = getPosition()
-//        let random = Int(arc4random()) % 100
-//        let newChip: Chip = Chip(view: self.chipsPositions[position], number: random < 75 ? 2 : 4, position: position)
-//        self.addSubview(newChip)
-//        self.chipsInGame[position] = newChip
+        let position = getPosition()
+        let random = Int(arc4random()) % 100
+        let number = random < 75 ? 2 : 4
+        let newChip = Chip(framePosition: self.chipsPositions[position], number: number, position: position)
+        tableroView.addSubview(newChip)
+        self.chipsInGame[position] = newChip
     }
     
     @objc fileprivate func swipeAction(_ sender:UISwipeGestureRecognizer) -> Void{
         switch sender.direction {
         case UISwipeGestureRecognizerDirection.down:
-            print("Down")
-//            gameLogic(DOWN_MOVE)
+            gameLogic(with: DIRECTION_DOWN)
             break
         case UISwipeGestureRecognizerDirection.up:
-            print("Up")
-//            gameLogic(UP_MOVE)
+            gameLogic(with: DIRECTION_UP)
             break
         case UISwipeGestureRecognizerDirection.left:
-            print("Left")
-//            gameLogic(LEFT_MOVE)
+            gameLogic(with: DIRECTION_LEFT)
             break
         case UISwipeGestureRecognizerDirection.right:
-            print("Right")
-//            gameLogic(RIGHT_MOVE)
+            gameLogic(with: DIRECTION_RIGHT)
             break
             
         default: break
         }
+    }
+    
+    func gameLogic(with direction:[Int]){
+
+        var scorePoints = 0
+        var lastPosition = -1
+        var lastChip : Chip? = nil
+        var movement = false
+        var gameWon = false
+        
+        for i in 0...15 {
+            
+            var sum = false
+            
+            //True index
+            let e = direction[i]
+            
+            //Get the chip for actual position
+            let obj = self.chipsInGame[e]
+            let actualChip : Chip? = obj is Chip ? obj as? Chip : nil
+            
+            if(actualChip == nil && lastPosition == -1){
+                lastPosition = e;
+            }
+            
+            if actualChip != nil && lastChip?.chipNumber == actualChip?.chipNumber {
+                
+                sum = true
+                movement = true
+                
+                let moveTo = lastChip?.chipPosition
+                
+                //Animation
+                tableroView.bringSubview(toFront: lastChip!)
+                lastChip?.moveChipToPosition(self.chipsPositions[moveTo!], number: (lastChip?.chipNumber)! * 2)
+                actualChip?.moveChipToPosition(self.chipsPositions[moveTo!], disappear: true)
+                
+                //Set matrix
+                self.chipsInGame[moveTo!] = lastChip!
+                if moveTo! == lastPosition { self.chipsInGame[(lastChip?.chipPosition)!] = 0 }
+                lastChip?.chipPosition = moveTo!
+                self.chipsInGame[(actualChip?.chipPosition)!] = 0
+                
+                //Set last position
+                lastPosition = direction[direction.index(of: moveTo!)! + 1]
+                
+                scorePoints = scorePoints + (lastChip?.chipNumber)! * 2
+                
+                lastChip = nil
+                
+                if (actualChip?.chipNumber)! * 2 == 2048 { gameWon = true }
+                
+            }else if actualChip != nil && lastPosition != -1 {
+                
+                //Move only one chip
+                movement = true
+                
+                //Animation
+                actualChip?.moveChipToPosition(chipsPositions[lastPosition], disappear: false)
+                actualChip?.chipPosition = lastPosition
+                
+                //Set matrix
+                self.chipsInGame[lastPosition] = actualChip!
+                self.chipsInGame[e] = 0
+                
+                //Set last position
+                lastPosition = direction[direction.index(of: lastPosition)! + 1]
+                
+            }
+            
+            if( (i + 1) % 4 == 0){
+                lastChip = nil;
+                lastPosition = -1;
+            }else if(actualChip != nil && !sum){
+                lastChip = actualChip;
+            }
+            
+        }
+        
+        self.score = self.score + scorePoints
+        
+        if gameWon {
+            
+            return
+        }
+        
+        if movement { addNewChip() }
+        
+    }
+    
+    @objc func reset(){
+        score = 0
+        
+        for i in 0...15 {
+            let obj = self.chipsInGame[i]
+            if obj is Chip {
+                let chip : Chip = (obj as? Chip)!
+                chip.removeFromSuperview()
+                self.chipsInGame[i] = 0
+            }
+        }
+        
+        addNewChip()
+        addNewChip()
+        
     }
     
 }
