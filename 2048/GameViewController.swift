@@ -44,6 +44,7 @@ class GameViewController: UIViewController {
         }
     }
     var bestScore = 0
+    var gameWon = false
     
     override func loadView() {
         self.view = UIView(frame: UIScreen.main.bounds)
@@ -108,7 +109,7 @@ class GameViewController: UIViewController {
         resetBtn.translatesAutoresizingMaskIntoConstraints = false
         self.view.addSubview(resetBtn)
         
-        views = ["scoreView":scoreView,"bestScoreView":bestScoreView,"tableroView":tableroView,"resetBtn":resetBtn]
+        views = ["scoreView":scoreView,"bestScoreView":bestScoreView,"tableroView":tableroView,"resetBtn":resetBtn,"scoreLbl":scoreLbl,"scorePointsLbl":scorePointsLbl,"bestScoreLbl":bestScoreLbl,"bestScorePointsLbl":bestScorePointsLbl]
         
         let isLandscape = self.view.frame.width > self.view.frame.height
         setConstraints(with: isLandscape)
@@ -184,14 +185,14 @@ class GameViewController: UIViewController {
         
         //SUBVIEWS CONSTRAINTS
         
-        var scoreConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[scoreLbl]-0-|", options: [], metrics: nil, views: ["scoreLbl":scoreLbl])
-        scoreConstraints = scoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[scorePointsLbl]-0-|", options: [], metrics: nil, views: ["scorePointsLbl":scorePointsLbl])
-        scoreConstraints = scoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-5-[scoreLbl(18)]-0-[scorePointsLbl]", options: [], metrics: nil, views: ["scoreLbl":scoreLbl,"scorePointsLbl":scorePointsLbl])
+        var scoreConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[scoreLbl]-0-|", options: [], metrics: nil, views: views)
+        scoreConstraints = scoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[scorePointsLbl]-0-|", options: [], metrics: nil, views: views)
+        scoreConstraints = scoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-5-[scoreLbl(18)]-0-[scorePointsLbl]", options: [], metrics: nil, views: views)
         scoreView.addConstraints(scoreConstraints)
         
-        var bestScoreConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[bestScoreLbl]-0-|", options: [], metrics: nil, views: ["bestScoreLbl":bestScoreLbl])
-        bestScoreConstraints = bestScoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[bestScorePointsLbl]-0-|", options: [], metrics: nil, views: ["bestScorePointsLbl":bestScorePointsLbl])
-        bestScoreConstraints = bestScoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-5-[bestScoreLbl(18)]-0-[bestScorePointsLbl]", options: [], metrics: nil, views: ["bestScoreLbl":bestScoreLbl,"bestScorePointsLbl":bestScorePointsLbl])
+        var bestScoreConstraints = NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[bestScoreLbl]-0-|", options: [], metrics: nil, views: views)
+        bestScoreConstraints = bestScoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "H:|-0-[bestScorePointsLbl]-0-|", options: [], metrics: nil, views: views)
+        bestScoreConstraints = bestScoreConstraints + NSLayoutConstraint.constraints(withVisualFormat: "V:|-5-[bestScoreLbl(18)]-0-[bestScorePointsLbl]", options: [], metrics: nil, views: views)
         bestScoreView.addConstraints(bestScoreConstraints)
         
     }
@@ -206,9 +207,9 @@ class GameViewController: UIViewController {
             }
         }
         
-        let random = Int(arc4random()) % slots.count
+        let randomNum:Int = Int(arc4random_uniform(UInt32(slots.count)))
         
-        return slots[random]
+        return slots[randomNum]
     }
     
     fileprivate func setTableSpaces(with isLandscape:Bool){
@@ -254,7 +255,7 @@ class GameViewController: UIViewController {
     
     func addNewChip() -> Void{
         let position = getPosition()
-        let random = Int(arc4random()) % 100
+        let random = Int(arc4random_uniform(UInt32(100)))
         let number = random < 75 ? 2 : 4
         let newChip = Chip(framePosition: self.chipsPositions[position], number: number, position: position)
         tableroView.addSubview(newChip)
@@ -262,6 +263,9 @@ class GameViewController: UIViewController {
     }
     
     @objc fileprivate func swipeAction(_ sender:UISwipeGestureRecognizer) -> Void{
+        
+        if gameWon { return }
+        
         switch sender.direction {
         case UISwipeGestureRecognizerDirection.down:
             gameLogic(with: DIRECTION_DOWN)
@@ -286,7 +290,6 @@ class GameViewController: UIViewController {
         var lastPosition = -1
         var lastChip : Chip? = nil
         var movement = false
-        var gameWon = false
         
         for i in 0...15 {
             
@@ -328,7 +331,7 @@ class GameViewController: UIViewController {
                 
                 lastChip = nil
                 
-                if (actualChip?.chipNumber)! * 2 == 2048 { gameWon = true }
+                if (actualChip?.chipNumber)! * 2 == 2048 { self.gameWon = true }
                 
             }else if actualChip != nil && lastPosition != -1 {
                 
@@ -359,10 +362,7 @@ class GameViewController: UIViewController {
         
         self.score = self.score + scorePoints
         
-        if gameWon {
-            
-            return
-        }
+        if self.gameWon { return }
         
         if movement { addNewChip() }
         
